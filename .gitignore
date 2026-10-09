@@ -13,3 +13,11 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Don't commit: on-device model files (multi-GB, pushed to the phone via adb)
+*.litertlm
+*.task
+*.tflite
+
+# Don't commit: per-user IDE device selection
+/.idea/deploymentTargetSelector.xml
