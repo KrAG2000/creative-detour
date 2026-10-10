@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.project.creativedetour.sensing.Access
+import com.project.creativedetour.ui.ModelCard
 
 /**
  * Play's "prominent disclosure": each card says what we read and why *before* the system prompt.
@@ -90,6 +91,8 @@ fun OnboardingScreen(refreshKey: Int, onFinish: () -> Unit, modifier: Modifier =
         ) {
             context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, packageUri))
         }
+
+        ModelCard()
 
         Button(onClick = onFinish, enabled = notifications && activity, modifier = Modifier.fillMaxWidth()) {
             Text("Start Creative Detour")

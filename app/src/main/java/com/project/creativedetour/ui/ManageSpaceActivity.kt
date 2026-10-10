@@ -43,8 +43,16 @@ class ManageSpaceActivity : ComponentActivity() {
 
     private enum class Action(val title: String, val confirm: String) {
         HISTORY("Clear history & settings", "Deletes your nudge history and setup. The AI model stays."),
-        MODEL("Delete AI model", "Frees the space. Nudges fall back to simple templates until you download it again."),
-        EVERYTHING("Delete everything", "Deletes all app data, including the AI model. Same as Android's Clear storage."),
+        MODEL(
+            "Delete AI model",
+            "Frees about 2.6 GB. The model can't be recovered: you'll have to download it again (Wi-Fi). " +
+                "Until then, nudges use simple templates.",
+        ),
+        EVERYTHING(
+            "Delete everything",
+            "Deletes all app data, including the AI model. Nothing can be recovered: you'll set up the app " +
+                "and download the model (about 2.6 GB) again. Same as Android's Clear storage.",
+        ),
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

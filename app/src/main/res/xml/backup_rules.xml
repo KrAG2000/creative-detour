@@ -2,4 +2,5 @@
 <!-- Auto Backup rules for Android 11 and lower. The model is 2.5 GB, far over the 25 MB backup quota. -->
 <full-backup-content>
     <exclude domain="file" path="models/" />
+    <exclude domain="external" path="models/" />
 </full-backup-content>

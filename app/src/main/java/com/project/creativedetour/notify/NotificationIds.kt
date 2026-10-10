@@ -3,9 +3,11 @@ package com.project.creativedetour.notify
 object NotificationIds {
     const val CHANNEL_NUDGES = "nudges"
     const val CHANNEL_SERVICE = "service"
+    const val CHANNEL_REASONS = "reasons"
 
     const val SERVICE_ONGOING = 1
     const val NUDGE = 2
+    const val NUDGE_REASONS = 3
 
     const val ACTION_ACCEPT = "com.project.creativedetour.ACCEPT"
     const val ACTION_NOT_NOW = "com.project.creativedetour.NOT_NOW"

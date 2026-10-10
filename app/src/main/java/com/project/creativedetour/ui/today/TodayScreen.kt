@@ -24,6 +24,7 @@ import com.project.creativedetour.data.Feedback
 import com.project.creativedetour.data.Outcome
 import com.project.creativedetour.engine.CheckResult
 import com.project.creativedetour.engine.RejectReason
+import com.project.creativedetour.ui.ModelCard
 import java.text.DateFormat
 import java.util.Date
 
@@ -50,6 +51,7 @@ fun TodayScreen(
             OutlinedButton(onClick = onSendTestNudge, modifier = Modifier.weight(1f)) { Text("Force nudge") }
         }
         TextButton(onClick = onOpenSetup) { Text("Permissions & setup") }
+        ModelCard()
         Spacer(Modifier.height(16.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(history, key = { it.id }) { FeedbackRow(it) }

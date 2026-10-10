@@ -17,10 +17,12 @@ import com.project.creativedetour.notify.NotificationIds.ACTION_DISMISS
 import com.project.creativedetour.notify.NotificationIds.ACTION_NOT_NOW
 import com.project.creativedetour.notify.NotificationIds.ACTION_REASON
 import com.project.creativedetour.notify.NotificationIds.CHANNEL_NUDGES
+import com.project.creativedetour.notify.NotificationIds.CHANNEL_REASONS
 import com.project.creativedetour.notify.NotificationIds.CHANNEL_SERVICE
 import com.project.creativedetour.notify.NotificationIds.EXTRA_FEEDBACK_ID
 import com.project.creativedetour.notify.NotificationIds.EXTRA_REASON
 import com.project.creativedetour.notify.NotificationIds.NUDGE
+import com.project.creativedetour.notify.NotificationIds.NUDGE_REASONS
 
 /**
  * Notifications allow max 3 buttons, so the reason flow is two steps:
@@ -36,6 +38,13 @@ class Notifier(private val context: Context) {
             listOf(
                 NotificationChannel(CHANNEL_NUDGES, "Nudges", NotificationManager.IMPORTANCE_HIGH)
                     .apply { description = "Small ideas to get you moving" },
+                // High importance so it pops up on screen, but without sound or vibration.
+                NotificationChannel(CHANNEL_REASONS, "Quick reasons", NotificationManager.IMPORTANCE_HIGH)
+                    .apply {
+                        description = "The follow-up question after you tap Not now"
+                        setSound(null, null)
+                        enableVibration(false)
+                    },
                 NotificationChannel(CHANNEL_SERVICE, "Background watcher", NotificationManager.IMPORTANCE_MIN)
                     .apply { description = "Keeps Creative Detour running" },
             )
@@ -56,18 +65,23 @@ class Notifier(private val context: Context) {
         post(notification)
     }
 
-    /** Replaces the nudge (same ID), silently, with the quick-reason buttons. */
+    /**
+     * A *new* notification (own ID, own quiet-but-high channel) instead of a silent update of the nudge:
+     * a silent update can't pop up again, so it looked like it vanished. Stays until swiped or answered.
+     */
     fun showReasonPicker(feedbackId: Long) {
-        val notification = NotificationCompat.Builder(context, CHANNEL_NUDGES)
+        manager.cancel(NUDGE)
+        val notification = NotificationCompat.Builder(context, CHANNEL_REASONS)
             .setSmallIcon(R.drawable.ic_nudge)
             .setContentTitle("No worries. What's stopping you?")
             .setContentText("One tap helps me pick better moments.")
-            .setSilent(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .addAction(0, RejectReason.BUSY.label, broadcast(ACTION_REASON, feedbackId, RejectReason.BUSY))
             .addAction(0, RejectReason.TIRED.label, broadcast(ACTION_REASON, feedbackId, RejectReason.TIRED))
             .addAction(0, "More…", openReasonScreen(feedbackId))
             .build()
-        post(notification)
+        post(notification, NUDGE_REASONS)
     }
 
     /** The always-on notification Android requires for a foreground service. Minimal channel = tucked away. */
@@ -80,7 +94,10 @@ class Notifier(private val context: Context) {
             .setContentIntent(openApp())
             .build()
 
-    fun cancelNudge() = manager.cancel(NUDGE)
+    fun cancelNudge() {
+        manager.cancel(NUDGE)
+        manager.cancel(NUDGE_REASONS)
+    }
 
     private fun openApp(): PendingIntent {
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -90,8 +107,8 @@ class Notifier(private val context: Context) {
     }
 
     @SuppressLint("MissingPermission") // checked via areNotificationsEnabled()
-    private fun post(notification: Notification) {
-        if (manager.areNotificationsEnabled()) manager.notify(NUDGE, notification)
+    private fun post(notification: Notification, id: Int = NUDGE) {
+        if (manager.areNotificationsEnabled()) manager.notify(id, notification)
     }
 
     private fun broadcast(action: String, feedbackId: Long, reason: RejectReason? = null): PendingIntent {

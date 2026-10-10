@@ -3,6 +3,7 @@ package com.project.creativedetour
 import android.app.Application
 import android.content.Context
 import androidx.core.content.edit
+import com.project.creativedetour.ai.ModelDownloader
 import com.project.creativedetour.ai.NudgeWriter
 import com.project.creativedetour.ai.TemplateNudgeWriter
 import com.project.creativedetour.data.DetourDatabase
@@ -29,6 +30,7 @@ class DetourApp : Application() {
     val database by lazy { DetourDatabase.create(this) }
     val notifier by lazy { Notifier(this) }
     val stepSource by lazy { StepSource(this) }
+    val modelDownloader by lazy { ModelDownloader(this) }
     val contextReader by lazy { ContextReader(this, stepSource, database.feedbackDao()) }
     val engine = NudgeEngine()
     var writer: NudgeWriter = TemplateNudgeWriter()
