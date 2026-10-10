@@ -3,7 +3,12 @@ package com.project.creativedetour
 import android.app.Application
 import android.content.Context
 import androidx.core.content.edit
+import com.project.creativedetour.ai.AiCapability
+import com.project.creativedetour.ai.FallbackNudgeWriter
+import com.project.creativedetour.ai.GemmaNudgeWriter
+import com.project.creativedetour.ai.GemmaRuntime
 import com.project.creativedetour.ai.ModelDownloader
+import com.project.creativedetour.ai.NudgeRequest
 import com.project.creativedetour.ai.NudgeWriter
 import com.project.creativedetour.ai.TemplateNudgeWriter
 import com.project.creativedetour.data.DetourDatabase
@@ -11,7 +16,7 @@ import com.project.creativedetour.data.Feedback
 import com.project.creativedetour.engine.CheckResult
 import com.project.creativedetour.engine.NudgeContext
 import com.project.creativedetour.engine.NudgeEngine
-import com.project.creativedetour.engine.RejectReason
+import com.project.creativedetour.engine.ActivityPicker
 import com.project.creativedetour.notify.Notifier
 import com.project.creativedetour.sensing.ContextReader
 import com.project.creativedetour.sensing.StepSource
@@ -33,7 +38,14 @@ class DetourApp : Application() {
     val modelDownloader by lazy { ModelDownloader(this) }
     val contextReader by lazy { ContextReader(this, stepSource, database.feedbackDao()) }
     val engine = NudgeEngine()
-    var writer: NudgeWriter = TemplateNudgeWriter()
+    private val activityPicker = ActivityPicker()
+    val gemmaRuntime by lazy { GemmaRuntime(this) }
+    val aiCapability by lazy { AiCapability(this, gemmaRuntime) }
+
+    /** Gemma when the model is downloaded and the phone can run it; otherwise the template. */
+    val writer: NudgeWriter by lazy {
+        FallbackNudgeWriter(GemmaNudgeWriter(this, gemmaRuntime, aiCapability), TemplateNudgeWriter())
+    }
 
     private val prefs by lazy { getSharedPreferences("detour", MODE_PRIVATE) }
     var onboarded: Boolean
@@ -54,15 +66,21 @@ class DetourApp : Application() {
         val ctx = contextReader.read(now)
         val recent = database.feedbackDao().since(now - RECENT_WINDOW_MS)
         val nudge = force || engine.shouldNudge(ctx, recent, now)
-        if (nudge) deliverNudge(ctx, recent.mapNotNull { it.reason }, now)
+        if (nudge) deliverNudge(ctx, recent, now)
         return CheckResult(now, ctx, nudge).also { _lastCheck.value = it }
     }
 
-    /** Write the message, record it as PENDING, and show it. */
-    private suspend fun deliverNudge(ctx: NudgeContext, recentReasons: List<RejectReason>, now: Long) {
-        val text = writer.write(ctx, recentReasons)
-        val id = database.feedbackDao().insert(Feedback(shownAt = now, hourOfDay = ctx.hourOfDay, message = text))
-        notifier.showNudge(id, text)
+    /** Pick an activity, write the message, record it as PENDING, and show it. [recent] is newest first. */
+    private suspend fun deliverNudge(ctx: NudgeContext, recent: List<Feedback>, now: Long) {
+        val activity = activityPicker.pick(ctx, recent, now)
+        val nudge = writer.write(NudgeRequest(ctx, activity, recent))
+        val id = database.feedbackDao().insert(
+            Feedback(
+                shownAt = now, hourOfDay = ctx.hourOfDay, message = nudge.text,
+                writtenBy = nudge.writtenBy, activity = activity.name,
+            )
+        )
+        notifier.showNudge(id, nudge.text)
     }
 
     companion object {

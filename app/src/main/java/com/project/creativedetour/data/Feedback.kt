@@ -13,6 +13,10 @@ data class Feedback(
     val shownAt: Long,
     val hourOfDay: Int,
     val message: String,
+    /** "template" or a model id like "gemma-4-e2b". */
+    val writtenBy: String = "template",
+    /** Activity.name of what was suggested; feeds ActivityPicker's learning. */
+    val activity: String? = null,
     val outcome: Outcome = Outcome.PENDING,
     val reason: RejectReason? = null,
     val respondedAt: Long? = null,

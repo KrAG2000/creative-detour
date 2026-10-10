@@ -12,6 +12,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,25 +22,47 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.project.creativedetour.ai.AiCapability
 import com.project.creativedetour.ai.ModelCatalog
 import com.project.creativedetour.ai.ModelDownloader.State
 import com.project.creativedetour.app
+import kotlinx.coroutines.launch
 
-/** Download / progress / ready card for the on-device model. Used in onboarding and on the home screen. */
+/** Download → test → "runs on GPU/CPU" card for the on-device model. Used in onboarding and on the home screen. */
 @Composable
 fun ModelCard(modifier: Modifier = Modifier) {
     val app = LocalContext.current.app
     val spec = ModelCatalog.default
     val downloader = app.modelDownloader
     val polled by remember { downloader.states(spec) }.collectAsState(initial = State.NotDownloaded)
+    val capability by app.aiCapability.status.collectAsState()
     var startError by remember { mutableStateOf<State.Failed?>(null) }
     val state = startError ?: polled
     val gb = "%.1f GB".format(spec.sizeBytes / 1_000_000_000.0)
 
+    // Model just became available and was never tested: test it once, in the app scope so leaving the screen doesn't stop it.
+    LaunchedEffect(state is State.Ready, capability) {
+        if (state is State.Ready && capability == AiCapability.Status.Unknown) {
+            app.scope.launch { app.aiCapability.check() }
+        }
+    }
+
     Card(modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            val icon = if (state is State.Ready) "✅" else "⬜"
+            val blocked = capability as? AiCapability.Status.Unsupported
+            val icon = when {
+                blocked != null -> "⛔"
+                state is State.Ready && capability is AiCapability.Status.Ready -> "✅"
+                else -> "⬜"
+            }
             Text("$icon AI model · Optional", style = MaterialTheme.typography.titleMedium)
+
+            // A hardware blocker: never offer 2.6 GB that can't run.
+            if (blocked != null && blocked.permanent) {
+                Text("${blocked.reason} Detour uses simple templates instead.", style = MaterialTheme.typography.bodyMedium)
+                return@Column
+            }
+
             Text(
                 "${spec.displayName} writes your nudges entirely on this phone, offline. " +
                     "One-time $gb download from Hugging Face, over Wi-Fi. Without it, Detour uses simple templates.",
@@ -66,11 +89,7 @@ fun ModelCard(modifier: Modifier = Modifier) {
                     Text("Checking the file…", style = MaterialTheme.typography.bodySmall)
                 }
 
-                is State.Ready -> Text(
-                    "Stored on this phone. Clearing the app's storage deletes it, and it can't be recovered: " +
-                        "you'd have to download it again.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                is State.Ready -> CapabilityLine(capability) { app.scope.launch { app.aiCapability.check() } }
 
                 is State.Failed -> {
                     Text(state.reason, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -80,6 +99,36 @@ fun ModelCard(modifier: Modifier = Modifier) {
                     }) { Text("Retry") }
                 }
             }
+        }
+    }
+}
+
+/** What the one-time test found. */
+@Composable
+private fun CapabilityLine(status: AiCapability.Status, onRetest: () -> Unit) {
+    when (status) {
+        AiCapability.Status.Unknown, AiCapability.Status.Checking -> {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+            Text(
+                "Testing what your phone can do. One time, up to about two minutes.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        is AiCapability.Status.Ready -> {
+            Text(
+                "Runs on your phone's ${status.backend} · about ${status.secondsPerNudge} s per nudge. " +
+                    "Clearing the app's storage deletes the model, and it can't be recovered: you'd have to download it again.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            TextButton(onClick = onRetest) { Text("Re-test") }
+        }
+        is AiCapability.Status.Unsupported -> {
+            Text(
+                "${status.reason} Detour uses simple templates instead.",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            TextButton(onClick = onRetest) { Text("Re-test") }
         }
     }
 }

@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.project.creativedetour.data.Feedback
 import com.project.creativedetour.data.Outcome
+import com.project.creativedetour.engine.Activity
 import com.project.creativedetour.engine.CheckResult
 import com.project.creativedetour.engine.RejectReason
 import com.project.creativedetour.ui.ModelCard
@@ -92,7 +93,10 @@ private fun FeedbackRow(feedback: Feedback) {
     }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp)) {
+            val author = if (feedback.writtenBy == "template") "📝 template" else "🧠 ${feedback.writtenBy}"
+            val activity = Activity.fromName(feedback.activity)?.label ?: "—"
             Text("$time · $outcome", style = MaterialTheme.typography.labelMedium)
+            Text("$activity · $author", style = MaterialTheme.typography.labelSmall)
             Text(feedback.message, style = MaterialTheme.typography.bodyMedium)
         }
     }
