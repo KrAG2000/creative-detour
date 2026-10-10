@@ -21,6 +21,9 @@ interface FeedbackDao {
     @Query("SELECT * FROM feedback WHERE shownAt >= :since ORDER BY shownAt DESC")
     suspend fun since(since: Long): List<Feedback>
 
+    @Query("SELECT * FROM feedback ORDER BY shownAt DESC LIMIT 1")
+    suspend fun latest(): Feedback?
+
     @Query("SELECT * FROM feedback ORDER BY shownAt DESC LIMIT :limit")
     fun observeRecent(limit: Int = 20): Flow<List<Feedback>>
 }

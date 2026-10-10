@@ -70,7 +70,24 @@ class Notifier(private val context: Context) {
         post(notification)
     }
 
+    /** The always-on notification Android requires for a foreground service. Minimal channel = tucked away. */
+    fun serviceNotification(): Notification =
+        NotificationCompat.Builder(context, CHANNEL_SERVICE)
+            .setSmallIcon(R.drawable.ic_nudge)
+            .setContentTitle("Watching for good moments to move")
+            .setContentText("Everything stays on this phone.")
+            .setOngoing(true)
+            .setContentIntent(openApp())
+            .build()
+
     fun cancelNudge() = manager.cancel(NUDGE)
+
+    private fun openApp(): PendingIntent {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        return PendingIntent.getActivity(context, 0, intent, PENDING_FLAGS)
+    }
 
     @SuppressLint("MissingPermission") // checked via areNotificationsEnabled()
     private fun post(notification: Notification) {

@@ -2,6 +2,7 @@ package com.project.creativedetour.ui.today
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.project.creativedetour.data.Feedback
 import com.project.creativedetour.data.Outcome
+import com.project.creativedetour.engine.CheckResult
 import com.project.creativedetour.engine.RejectReason
 import java.text.DateFormat
 import java.util.Date
@@ -28,7 +30,10 @@ import java.util.Date
 @Composable
 fun TodayScreen(
     history: List<Feedback>,
+    lastCheck: CheckResult?,
+    onCheckNow: () -> Unit,
     onSendTestNudge: () -> Unit,
+    onOpenSetup: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxSize().padding(16.dp)) {
@@ -38,12 +43,38 @@ fun TodayScreen(
             style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(16.dp))
-        Button(onClick = onSendTestNudge, modifier = Modifier.fillMaxWidth()) {
-            Text("Send test nudge")
+        RightNowCard(lastCheck)
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = onCheckNow, modifier = Modifier.weight(1f)) { Text("Check now") }
+            OutlinedButton(onClick = onSendTestNudge, modifier = Modifier.weight(1f)) { Text("Force nudge") }
         }
+        TextButton(onClick = onOpenSetup) { Text("Permissions & setup") }
         Spacer(Modifier.height(16.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(history, key = { it.id }) { FeedbackRow(it) }
+        }
+    }
+}
+
+/** What the engine saw on its last check, and what it decided. "—" = source unavailable. */
+@Composable
+private fun RightNowCard(check: CheckResult?) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp)) {
+            if (check == null) {
+                Text("No check yet. The first one runs a minute after start.", style = MaterialTheme.typography.bodyMedium)
+                return@Column
+            }
+            val ctx = check.ctx
+            val time = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(check.at))
+            fun Int?.show(unit: String) = this?.let { "$it $unit" } ?: "—"
+            Text("Last check $time · ${if (check.nudged) "nudged 🚶" else "stayed quiet 🤫"}", style = MaterialTheme.typography.labelMedium)
+            Text("Steps (last hour): ${ctx.stepsLastHour.show("")}")
+            Text("Screen on (last hour): ${ctx.screenMinutesLastHour.show("min")}")
+            Text("Since last phone use: ${ctx.minutesSinceLastUsage.show("min")}")
+            Text("Next event: ${ctx.minutesUntilNextEvent?.let { "${ctx.nextEventTitle ?: "untitled"} in $it min" } ?: "—"}")
+            Text("Since last nudge: ${ctx.minutesSinceLastNudge.show("min")}")
         }
     }
 }

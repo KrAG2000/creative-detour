@@ -3,9 +3,19 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Special permission: the user grants it in Settings → Usage access. -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
 
     <application
         android:name=".DetourApp"
+        android:manageSpaceActivity=".ui.ManageSpaceActivity"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -26,9 +36,31 @@
             </intent-filter>
         </activity>
 
+        <!-- Opened by Settings → Storage → "Manage space" (replaces "Clear storage"). -->
+        <activity
+            android:name=".ui.ManageSpaceActivity"
+            android:exported="false"
+            android:label="Manage space"
+            android:theme="@style/Theme.CreativeDetour" />
+
         <receiver
             android:name=".notify.NudgeActionReceiver"
             android:exported="false" />
+
+        <service
+            android:name=".service.DetourService"
+            android:exported="false"
+            android:foregroundServiceType="health" />
+
+        <!-- Exported so the system can deliver BOOT_COMPLETED; only the system can send these actions. -->
+        <receiver
+            android:name=".service.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>
