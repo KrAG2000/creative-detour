@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.project.creativedetour.MainActivity
 import com.project.creativedetour.R
+import com.project.creativedetour.engine.Decision
 import com.project.creativedetour.engine.RejectReason
 import com.project.creativedetour.notify.NotificationIds.ACTION_ACCEPT
 import com.project.creativedetour.notify.NotificationIds.ACTION_DISMISS
@@ -23,6 +24,9 @@ import com.project.creativedetour.notify.NotificationIds.EXTRA_FEEDBACK_ID
 import com.project.creativedetour.notify.NotificationIds.EXTRA_REASON
 import com.project.creativedetour.notify.NotificationIds.NUDGE
 import com.project.creativedetour.notify.NotificationIds.NUDGE_REASONS
+import com.project.creativedetour.notify.NotificationIds.SERVICE_ONGOING
+import java.text.DateFormat
+import java.util.Date
 
 /**
  * Notifications allow max 3 buttons, so the reason flow is two steps:
@@ -85,14 +89,29 @@ class Notifier(private val context: Context) {
     }
 
     /** The always-on notification Android requires for a foreground service. Minimal channel = tucked away. */
-    fun serviceNotification(): Notification =
+    fun serviceNotification(
+        title: String = "Watching for good moments to move",
+        text: String = "Everything stays on this phone.",
+    ): Notification =
         NotificationCompat.Builder(context, CHANNEL_SERVICE)
             .setSmallIcon(R.drawable.ic_nudge)
-            .setContentTitle("Watching for good moments to move")
-            .setContentText("Everything stays on this phone.")
+            .setContentTitle(title)
+            .setContentText(text)
             .setOngoing(true)
+            .setSilent(true)
             .setContentIntent(openApp())
             .build()
+
+    /** After every check: what was decided and when the next check is. */
+    fun updateServiceNotification(decision: Decision?, nextCheckAt: Long) {
+        val title = when (decision) {
+            Decision.Nudge -> "Sent you a nudge"
+            is Decision.Quiet -> decision.reason
+            null -> "Watching for good moments to move"
+        }
+        val next = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(nextCheckAt))
+        post(serviceNotification(title, "Next check around $next · Everything stays on this phone."), SERVICE_ONGOING)
+    }
 
     fun cancelNudge() {
         manager.cancel(NUDGE)

@@ -14,6 +14,7 @@ import com.project.creativedetour.ai.TemplateNudgeWriter
 import com.project.creativedetour.data.DetourDatabase
 import com.project.creativedetour.data.Feedback
 import com.project.creativedetour.engine.CheckResult
+import com.project.creativedetour.engine.Decision
 import com.project.creativedetour.engine.NudgeContext
 import com.project.creativedetour.engine.NudgeEngine
 import com.project.creativedetour.engine.ActivityPicker
@@ -23,6 +24,8 @@ import com.project.creativedetour.sensing.StepSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -55,6 +58,21 @@ class DetourApp : Application() {
     private val _lastCheck = MutableStateFlow<CheckResult?>(null)
     val lastCheck: StateFlow<CheckResult?> = _lastCheck
 
+    /** When the service plans to look again. Set by DetourService after every check. */
+    private val _nextCheckAt = MutableStateFlow<Long?>(null)
+    val nextCheckAt: StateFlow<Long?> = _nextCheckAt
+    fun setNextCheck(at: Long?) {
+        _nextCheckAt.value = at
+    }
+
+    /** Tells a running DetourService loop to check right away (and re-plan). */
+    val serviceWake = Channel<Unit>(Channel.CONFLATED)
+
+    /** "Check now": through the service if it's running (so the schedule updates), otherwise directly. */
+    fun requestCheck() {
+        if (_nextCheckAt.value != null) serviceWake.trySend(Unit) else scope.launch { runCheck() }
+    }
+
     override fun onCreate() {
         super.onCreate()
         notifier.createChannels()
@@ -65,9 +83,9 @@ class DetourApp : Application() {
         val now = System.currentTimeMillis()
         val ctx = contextReader.read(now)
         val recent = database.feedbackDao().since(now - RECENT_WINDOW_MS)
-        val nudge = force || engine.shouldNudge(ctx, recent, now)
-        if (nudge) deliverNudge(ctx, recent, now)
-        return CheckResult(now, ctx, nudge).also { _lastCheck.value = it }
+        val decision = if (force) Decision.Nudge else engine.decide(ctx, recent, now)
+        if (decision == Decision.Nudge) deliverNudge(ctx, recent, now)
+        return CheckResult(now, ctx, decision).also { _lastCheck.value = it }
     }
 
     /** Pick an activity, write the message, record it as PENDING, and show it. [recent] is newest first. */
