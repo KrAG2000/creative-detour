@@ -6,7 +6,6 @@ Thanks for helping people spend a little less time on their screens! Bug reports
 
 - **Small fixes** (typos, obvious bugs): open a pull request directly.
 - **New features or bigger changes:** open an issue first, so we can agree on the idea before you spend time on it.
-- **Security problems:** don't open a public issue. See [Reporting a vulnerability](#reporting-a-vulnerability).
 
 ## Set up
 
@@ -96,10 +95,6 @@ Detour's promise is that **nothing leaves the phone**. Every change must keep it
 - **Use explicit intents** and `PendingIntent.FLAG_IMMUTABLE`.
 - **Don't log personal data:** no calendar titles, nudge history or reasons in `Log` calls.
 - **Validate everything from outside:** intent extras, files and model output.
-
-## Reporting a vulnerability
-
-Please **don't open a public issue**. Report it privately through the repository's **Security** tab → **Report a vulnerability**, and include steps to reproduce. You'll get a reply as soon as possible.
 
 ## Pull requests
 
